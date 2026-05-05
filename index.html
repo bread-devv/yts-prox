@@ -25,7 +25,6 @@
             background: #ff0000; color: white; cursor: pointer; font-weight: bold;
         }
         button:hover { background: #cc0000; }
-        
         #video-container {
             flex: 1; display: flex; flex-direction: column;
             justify-content: center; align-items: center; width: 100%;
@@ -57,17 +56,21 @@
     </div>
 
     <script>
-        const API_KEY = 'AIzaSyBLOCb3TzQhEtRdWYxeveNCCbTcXKw0eUs'; 
+        const API_KEY = 'YOUR_YOUTUBE_API_KEY_HERE'; 
         
-        let videos =[];
+        let videos = [];
         let currentIndex = 0;
         let isScrolling = false;
         let videoStartTime = 0;
         let userProfile = {};
+        let totalWeightedWatchTime = 0;
 
-        function getRandomLetter() {
-            const alphabet = "abcdefghijklmnopqrstuvwxyz";
-            return alphabet[Math.floor(Math.random() * alphabet.length)];
+        function getRandomQuery() {
+            const chars = "abcdefghijklmnopqrstuvwxyz";
+            const length = Math.floor(Math.random() * 2) + 1;
+            let res = "";
+            for(let i=0; i<length; i++) res += chars[Math.floor(Math.random() * chars.length)];
+            return res;
         }
 
         async function fetchVideos(isAutoFetch = false) {
@@ -75,17 +78,19 @@
             let internalQuery = query;
             
             if (query === "") {
-                if (Object.keys(userProfile).length > 0 && Math.random() > 0.3) {
+                const tailorProbability = Math.min(totalWeightedWatchTime / 500, 0.85);
+                
+                if (Object.keys(userProfile).length > 0 && Math.random() < tailorProbability) {
                     const sortedTags = Object.keys(userProfile).sort((a, b) => userProfile[b] - userProfile[a]);
-                    const topTags = sortedTags.slice(0, 5);
+                    const topTags = sortedTags.slice(0, 10);
                     internalQuery = topTags[Math.floor(Math.random() * topTags.length)];
                 } else {
-                    internalQuery = getRandomLetter();
+                    internalQuery = getRandomQuery();
                 }
             }
 
             const searchQuery = `${internalQuery} #shorts`;
-            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(searchQuery)}&type=video&videoDuration=short&key=${API_KEY}`;
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(searchQuery)}&type=video&videoDuration=short&relevanceLanguage=en&regionCode=US&key=${API_KEY}`;
 
             try {
                 const response = await fetch(url);
@@ -102,7 +107,7 @@
                     }
                 }
             } catch (error) {
-                console.error("Error fetching videos:", error);
+                console.error(error);
             }
         }
 
@@ -119,19 +124,20 @@
                             let cleanTag = tag.toLowerCase();
                             userProfile[cleanTag] = (userProfile[cleanTag] || 0) + weight;
                         });
+                        totalWeightedWatchTime += weight;
                     }
                 }
             } catch (error) {
-                console.error("Error fetching tags:", error);
+                console.error(error);
             }
         }
 
         function processVideoWatchTime() {
             if (!videos[currentIndex]) return;
-            const durationWatched = Date.now() - videoStartTime;
+            const durationWatched = (Date.now() - videoStartTime) / 1000;
             
-            if (durationWatched > 3000) { 
-                const weight = Math.min(Math.floor(durationWatched / 1000), 30);
+            if (durationWatched > 2) { 
+                const weight = Math.min(Math.floor(durationWatched), 60);
                 const videoId = videos[currentIndex].id.videoId;
                 extractTagsAndUpdateProfile(videoId, weight);
             }
@@ -145,7 +151,7 @@
         function loadVideo() {
             if (videos.length > 0 && videos[currentIndex]) {
                 const videoId = videos[currentIndex].id.videoId;
-                document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1&hl=en&cc_lang_pref=en`;
                 videoStartTime = Date.now();
             }
         }
@@ -155,8 +161,7 @@
                 processVideoWatchTime();
                 currentIndex++;
                 loadVideo();
-                
-                if (currentIndex >= videos.length - 4 && document.getElementById('searchInput').value.trim() === "") {
+                if (currentIndex >= videos.length - 5 && document.getElementById('searchInput').value.trim() === "") {
                     fetchVideos(true);
                 }
             }
@@ -172,14 +177,9 @@
 
         window.addEventListener('wheel', (event) => {
             if (isScrolling) return;
-            
             isScrolling = true;
-            if (event.deltaY > 0) {
-                nextVideo();
-            } else if (event.deltaY < 0) {
-                prevVideo();
-            }
-
+            if (event.deltaY > 0) nextVideo();
+            else if (event.deltaY < 0) prevVideo();
             setTimeout(() => { isScrolling = false; }, 800);
         });
 

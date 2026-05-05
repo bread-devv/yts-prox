@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shorts Proxy v4.0</title>
+    <title>Shorts Proxy</title>
     <style>
         body, html {
             margin: 0; padding: 0; height: 100%;
@@ -12,75 +12,26 @@
             display: flex; flex-direction: column; align-items: center;
             overflow: hidden;
         }
-        #main-layout {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-        }
-        #content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-        }
-        #search-bar {
-            padding: 15px; width: 100%; background: #222;
-            display: flex; justify-content: center; gap: 10px; z-index: 10;
-        }
-        input {
-            padding: 10px; width: 300px; border-radius: 20px;
-            border: 1px solid #444; background: #111; color: white; outline: none;
-        }
-        button {
-            padding: 10px 20px; border-radius: 20px; border: none;
-            background: #ff0000; color: white; cursor: pointer; font-weight: bold;
-        }
+        #main-layout { display: flex; width: 100%; height: 100vh; }
+        #content-area { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; }
+        #search-bar { padding: 15px; width: 100%; background: #222; display: flex; justify-content: center; gap: 10px; z-index: 10; }
+        input { padding: 10px; width: 300px; border-radius: 20px; border: 1px solid #444; background: #111; color: white; outline: none; }
+        button { padding: 10px 20px; border-radius: 20px; border: none; background: #ff0000; color: white; cursor: pointer; font-weight: bold; }
         button:hover { background: #cc0000; }
 
-        /* Sidebar Styling */
-        #sidebar {
-            width: 260px;
-            background: #121212;
-            border-left: 1px solid #333;
-            display: flex;
-            flex-direction: column;
-            padding: 15px;
-            overflow-y: auto;
-        }
-        #sidebar h3 { margin-top: 0; font-size: 16px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
-        .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
-        .tag-item {
-            background: #2a2a2a;
-            padding: 6px 12px;
-            border-radius: 15px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: 0.2s;
-            border: 1px solid transparent;
-        }
+        #sidebar { width: 280px; background: #121212; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 15px; overflow-y: auto; }
+        #sidebar h3 { margin: 20px 0 10px 0; font-size: 14px; color: #ff0000; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        #sidebar h3:first-child { margin-top: 0; }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag-item { background: #2a2a2a; padding: 5px 10px; border-radius: 12px; font-size: 12px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
         .tag-item:hover { background: #444; border-color: #ff0000; }
 
-        #video-container {
-            flex: 1; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; width: 100%;
-        }
-        iframe {
-            width: 100%; max-width: 400px; height: 75vh;
-            border: none; border-radius: 15px; background: #000;
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
-        }
+        #video-container { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; }
+        iframe { width: 100%; max-width: 400px; height: 75vh; border: none; border-radius: 15px; background: #000; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         .controls { margin-top: 15px; display: flex; gap: 20px; }
         .controls button { background: #333; min-width: 100px; }
         
-        #version-display {
-            position: fixed;
-            bottom: 5px;
-            left: 10px;
-            font-size: 10px;
-            color: #444;
-            pointer-events: none;
-        }
+        #version-display { position: fixed; bottom: 5px; left: 10px; font-size: 10px; color: #444; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -91,7 +42,6 @@
                 <input type="text" id="searchInput" placeholder="Search for Shorts..." onkeydown="if(event.key === 'Enter') manualSearch()">
                 <button onclick="manualSearch()">Search</button>
             </div>
-
             <div id="video-container">
                 <iframe id="videoPlayer" allow="autoplay; fullscreen" src=""></iframe>
                 <div class="controls">
@@ -102,29 +52,33 @@
         </div>
 
         <div id="sidebar">
-            <h3>Trending Tags</h3>
-            <div class="tag-list" id="tagList">
-                <!-- Tags injected by JS -->
-            </div>
+            <h3>Edits</h3>
+            <div class="tag-list" id="tags-edits"></div>
+            <h3>Lifestyle & Daily</h3>
+            <div class="tag-list" id="tags-lifestyle"></div>
+            <h3>Music & Entertainment</h3>
+            <div class="tag-list" id="tags-music"></div>
+            <h3>Gaming</h3>
+            <div class="tag-list" id="tags-gaming"></div>
+            <h3>Food & Cooking</h3>
+            <div class="tag-list" id="tags-food"></div>
         </div>
     </div>
 
     <div id="version-display"></div>
 
     <script>
-        /** CONFIGURATION **/
         const API_KEY = 'AIzaSyBLOCb3TzQhEtRdWYxeveNCCbTcXKw0eUs'; 
-        const APP_VERSION = "v4.0";
+        const APP_VERSION = "v4.1";
         
-        const TRENDING_TAGS = [
-            'Minecraft', 'Comedy', 'ASMR', 'Gaming', 'Cooking', 'Memes', 'Pets', 'DIY', 'Satisfying', 'Tech', 
-            'LifeHacks', 'Fitness', 'Art', 'Travel', 'Music', 'Science', 'Sports', 'Animation', 'Reaction', 'Storytime',
-            'Education', 'Unboxing', 'Beauty', 'Dance', 'Challenges', 'Nature', 'Space', 'History', 'MovieReview', 'Vlog',
-            'Coding', 'Roblox', 'Valorant', 'Fortnite', 'Psychology', 'Gadgets', 'Drawing', 'Photography', 'Skincare', 'Yoga',
-            'Motivation', 'Finance', 'Crypto', 'Automotive', 'Gadgets', 'Facts', 'Woodworking', 'Survival', 'Puzzles', 'Magic'
-        ];
+        const CATEGORIES = {
+            edits: ['Edit', 'Phonk', 'AfterEffects', 'Sigma', 'Skull', 'CapCut', 'Visuals', 'Clean', 'Transitions', 'AMV'],
+            lifestyle: ['Lifestyle', 'DailyLife', 'Aesthetic', 'Wellness', 'SelfCare', 'Productivity', 'Minimalism', 'WorkLife', 'MorningRoutine', 'HealthyLiving'],
+            music: ['Music', 'NewMusic', 'CoverSong', 'MusicVideo', 'LivePerformance', 'DanceMusic', 'Rap', 'Entertainment', 'Comedy', 'EntertainmentShorts'],
+            gaming: ['Gaming', 'Gameplay', 'LiveGaming', 'GameReview', 'Streamer', 'Minecraft', 'Fortnite', 'PS5', 'Xbox', 'AmongUs'],
+            food: ['Food', 'Foodie', 'Recipes', 'HomeCooking', 'StreetFood', 'Cooking', 'Tasty', 'FoodVlog', 'HealthyFood', 'QuickMeals']
+        };
 
-        /** STATE **/
         let videos = [];
         let currentIndex = 0;
         let isScrolling = false;
@@ -135,27 +89,26 @@
         document.getElementById('version-display').innerText = APP_VERSION;
 
         function initSidebar() {
-            const container = document.getElementById('tagList');
-            TRENDING_TAGS.forEach(tag => {
-                const div = document.createElement('div');
-                div.className = 'tag-item';
-                div.innerText = `#${tag}`;
-                div.onclick = () => selectSidebarTag(tag);
-                container.appendChild(div);
-            });
-        }
-
-        function selectSidebarTag(tag) {
-            document.getElementById('searchInput').value = tag;
-            // Reward the tag immediately in the learning model
-            userProfile[tag.toLowerCase()] = (userProfile[tag.toLowerCase()] || 0) + 50; 
-            totalWeightedWatchTime += 50;
-            manualSearch();
+            for (const [cat, tags] of Object.entries(CATEGORIES)) {
+                const container = document.getElementById(`tags-${cat}`);
+                tags.forEach(tag => {
+                    const div = document.createElement('div');
+                    div.className = 'tag-item';
+                    div.innerText = `#${tag}`;
+                    div.onclick = () => {
+                        document.getElementById('searchInput').value = tag;
+                        userProfile[tag.toLowerCase()] = (userProfile[tag.toLowerCase()] || 0) + 50;
+                        totalWeightedWatchTime += 50;
+                        manualSearch();
+                    };
+                    container.appendChild(div);
+                });
+            }
         }
 
         function getRandomQuery() {
             const chars = "abcdefghijklmnopqrstuvwxyz";
-            return chars[Math.floor(Math.random() * chars.length)] + (Math.random() > 0.5 ? chars[Math.floor(Math.random() * chars.length)] : "");
+            return chars[Math.floor(Math.random() * chars.length)];
         }
 
         async function fetchVideos(isAutoFetch = false) {
@@ -166,30 +119,23 @@
                 const tailorProbability = Math.min(totalWeightedWatchTime / 500, 0.85);
                 if (Object.keys(userProfile).length > 0 && Math.random() < tailorProbability) {
                     const sortedTags = Object.keys(userProfile).sort((a, b) => userProfile[b] - userProfile[a]);
-                    const pool = sortedTags.slice(0, 10);
-                    internalQuery = pool[Math.floor(Math.random() * pool.length)];
+                    internalQuery = sortedTags.slice(0, 10)[Math.floor(Math.random() * 10)] || getRandomQuery();
                 } else {
                     internalQuery = getRandomQuery();
                 }
             }
 
-            const searchQuery = `${internalQuery} #shorts`;
-            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(searchQuery)}&type=video&videoDuration=short&relevanceLanguage=en&regionCode=US&key=${API_KEY}`;
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(internalQuery + " #shorts")}&type=video&videoDuration=short&relevanceLanguage=en&regionCode=US&key=${API_KEY}`;
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
                 if (data.items && data.items.length > 0) {
                     let newVideos = data.items.sort(() => Math.random() - 0.5);
-                    if (isAutoFetch) {
-                        videos = videos.concat(newVideos);
-                    } else {
-                        videos = newVideos;
-                        currentIndex = 0;
-                        loadVideo();
-                    }
+                    if (isAutoFetch) { videos = videos.concat(newVideos); }
+                    else { videos = newVideos; currentIndex = 0; loadVideo(); }
                 }
-            } catch (e) { console.error("Search error", e); }
+            } catch (e) { console.error(e); }
         }
 
         async function updateProfileFromTags(videoId, weight) {
@@ -197,17 +143,14 @@
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                if (data.items && data.items.length > 0) {
-                    const tags = data.items[0].snippet.tags;
-                    if (tags) {
-                        tags.forEach(tag => {
-                            let clean = tag.toLowerCase();
-                            userProfile[clean] = (userProfile[clean] || 0) + weight;
-                        });
-                        totalWeightedWatchTime += weight;
-                    }
+                if (data.items?.[0]?.snippet?.tags) {
+                    data.items[0].snippet.tags.forEach(tag => {
+                        let clean = tag.toLowerCase();
+                        userProfile[clean] = (userProfile[clean] || 0) + weight;
+                    });
+                    totalWeightedWatchTime += weight;
                 }
-            } catch (e) { console.error("Tag fetch error", e); }
+            } catch (e) { console.error(e); }
         }
 
         function processWatchTime() {
@@ -219,15 +162,11 @@
             }
         }
 
-        function manualSearch() {
-            processWatchTime();
-            fetchVideos(false);
-        }
+        function manualSearch() { processWatchTime(); fetchVideos(false); }
 
         function loadVideo() {
-            if (videos.length > 0 && videos[currentIndex]) {
-                const videoId = videos[currentIndex].id.videoId;
-                document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1&hl=en&cc_lang_pref=en&rel=0`;
+            if (videos[currentIndex]) {
+                document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videos[currentIndex].id.videoId}?autoplay=1&hl=en&rel=0`;
                 videoStartTime = Date.now();
             }
         }
@@ -237,29 +176,21 @@
                 processWatchTime();
                 currentIndex++;
                 loadVideo();
-                if (currentIndex >= videos.length - 5 && document.getElementById('searchInput').value.trim() === "") {
-                    fetchVideos(true);
-                }
+                if (currentIndex >= videos.length - 5 && document.getElementById('searchInput').value === "") fetchVideos(true);
             }
         }
 
         function prevVideo() {
-            if (currentIndex > 0) {
-                processWatchTime();
-                currentIndex--;
-                loadVideo();
-            }
+            if (currentIndex > 0) { processWatchTime(); currentIndex--; loadVideo(); }
         }
 
         window.addEventListener('wheel', (e) => {
             if (isScrolling) return;
             isScrolling = true;
-            if (e.deltaY > 0) nextVideo();
-            else if (e.deltaY < 0) prevVideo();
+            if (e.deltaY > 0) nextVideo(); else if (e.deltaY < 0) prevVideo();
             setTimeout(() => { isScrolling = false; }, 800);
         });
 
-        // Initialize
         initSidebar();
         fetchVideos(false);
     </script>

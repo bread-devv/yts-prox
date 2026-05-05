@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shorts Proxy</title>
+    <title>Shorts Proxy v4.0</title>
     <style>
         body, html {
             margin: 0; padding: 0; height: 100%;
@@ -11,6 +11,18 @@
             font-family: Arial, sans-serif;
             display: flex; flex-direction: column; align-items: center;
             overflow: hidden;
+        }
+        #main-layout {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        #content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
         }
         #search-bar {
             padding: 15px; width: 100%; background: #222;
@@ -25,6 +37,30 @@
             background: #ff0000; color: white; cursor: pointer; font-weight: bold;
         }
         button:hover { background: #cc0000; }
+
+        /* Sidebar Styling */
+        #sidebar {
+            width: 260px;
+            background: #121212;
+            border-left: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        #sidebar h3 { margin-top: 0; font-size: 16px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag-item {
+            background: #2a2a2a;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid transparent;
+        }
+        .tag-item:hover { background: #444; border-color: #ff0000; }
+
         #video-container {
             flex: 1; display: flex; flex-direction: column;
             justify-content: center; align-items: center; width: 100%;
@@ -32,32 +68,63 @@
         iframe {
             width: 100%; max-width: 400px; height: 75vh;
             border: none; border-radius: 15px; background: #000;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
-        .controls {
-            margin-top: 15px; display: flex; gap: 20px;
+        .controls { margin-top: 15px; display: flex; gap: 20px; }
+        .controls button { background: #333; min-width: 100px; }
+        
+        #version-display {
+            position: fixed;
+            bottom: 5px;
+            left: 10px;
+            font-size: 10px;
+            color: #444;
+            pointer-events: none;
         }
-        .controls button { background: #333; }
-        .controls button:hover { background: #555; }
     </style>
 </head>
 <body>
 
-    <div id="search-bar">
-        <input type="text" id="searchInput" placeholder="Search for Shorts..." onkeydown="if(event.key === 'Enter') manualSearch()">
-        <button onclick="manualSearch()">Search</button>
-    </div>
+    <div id="main-layout">
+        <div id="content-area">
+            <div id="search-bar">
+                <input type="text" id="searchInput" placeholder="Search for Shorts..." onkeydown="if(event.key === 'Enter') manualSearch()">
+                <button onclick="manualSearch()">Search</button>
+            </div>
 
-    <div id="video-container">
-        <iframe id="videoPlayer" allow="autoplay; fullscreen" src=""></iframe>
-        <div class="controls">
-            <button onclick="prevVideo()">↑ Previous</button>
-            <button onclick="nextVideo()">↓ Next</button>
+            <div id="video-container">
+                <iframe id="videoPlayer" allow="autoplay; fullscreen" src=""></iframe>
+                <div class="controls">
+                    <button onclick="prevVideo()">↑ Prev</button>
+                    <button onclick="nextVideo()">↓ Next</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="sidebar">
+            <h3>Trending Tags</h3>
+            <div class="tag-list" id="tagList">
+                <!-- Tags injected by JS -->
+            </div>
         </div>
     </div>
 
+    <div id="version-display"></div>
+
     <script>
+        /** CONFIGURATION **/
         const API_KEY = 'AIzaSyBLOCb3TzQhEtRdWYxeveNCCbTcXKw0eUs'; 
+        const APP_VERSION = "v4.0";
         
+        const TRENDING_TAGS = [
+            'Minecraft', 'Comedy', 'ASMR', 'Gaming', 'Cooking', 'Memes', 'Pets', 'DIY', 'Satisfying', 'Tech', 
+            'LifeHacks', 'Fitness', 'Art', 'Travel', 'Music', 'Science', 'Sports', 'Animation', 'Reaction', 'Storytime',
+            'Education', 'Unboxing', 'Beauty', 'Dance', 'Challenges', 'Nature', 'Space', 'History', 'MovieReview', 'Vlog',
+            'Coding', 'Roblox', 'Valorant', 'Fortnite', 'Psychology', 'Gadgets', 'Drawing', 'Photography', 'Skincare', 'Yoga',
+            'Motivation', 'Finance', 'Crypto', 'Automotive', 'Gadgets', 'Facts', 'Woodworking', 'Survival', 'Puzzles', 'Magic'
+        ];
+
+        /** STATE **/
         let videos = [];
         let currentIndex = 0;
         let isScrolling = false;
@@ -65,12 +132,30 @@
         let userProfile = {};
         let totalWeightedWatchTime = 0;
 
+        document.getElementById('version-display').innerText = APP_VERSION;
+
+        function initSidebar() {
+            const container = document.getElementById('tagList');
+            TRENDING_TAGS.forEach(tag => {
+                const div = document.createElement('div');
+                div.className = 'tag-item';
+                div.innerText = `#${tag}`;
+                div.onclick = () => selectSidebarTag(tag);
+                container.appendChild(div);
+            });
+        }
+
+        function selectSidebarTag(tag) {
+            document.getElementById('searchInput').value = tag;
+            // Reward the tag immediately in the learning model
+            userProfile[tag.toLowerCase()] = (userProfile[tag.toLowerCase()] || 0) + 50; 
+            totalWeightedWatchTime += 50;
+            manualSearch();
+        }
+
         function getRandomQuery() {
             const chars = "abcdefghijklmnopqrstuvwxyz";
-            const length = Math.floor(Math.random() * 2) + 1;
-            let res = "";
-            for(let i=0; i<length; i++) res += chars[Math.floor(Math.random() * chars.length)];
-            return res;
+            return chars[Math.floor(Math.random() * chars.length)] + (Math.random() > 0.5 ? chars[Math.floor(Math.random() * chars.length)] : "");
         }
 
         async function fetchVideos(isAutoFetch = false) {
@@ -79,11 +164,10 @@
             
             if (query === "") {
                 const tailorProbability = Math.min(totalWeightedWatchTime / 500, 0.85);
-                
                 if (Object.keys(userProfile).length > 0 && Math.random() < tailorProbability) {
                     const sortedTags = Object.keys(userProfile).sort((a, b) => userProfile[b] - userProfile[a]);
-                    const topTags = sortedTags.slice(0, 10);
-                    internalQuery = topTags[Math.floor(Math.random() * topTags.length)];
+                    const pool = sortedTags.slice(0, 10);
+                    internalQuery = pool[Math.floor(Math.random() * pool.length)];
                 } else {
                     internalQuery = getRandomQuery();
                 }
@@ -95,7 +179,6 @@
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                
                 if (data.items && data.items.length > 0) {
                     let newVideos = data.items.sort(() => Math.random() - 0.5);
                     if (isAutoFetch) {
@@ -106,59 +189,52 @@
                         loadVideo();
                     }
                 }
-            } catch (error) {
-                console.error(error);
-            }
+            } catch (e) { console.error("Search error", e); }
         }
 
-        async function extractTagsAndUpdateProfile(videoId, weight) {
+        async function updateProfileFromTags(videoId, weight) {
             const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${API_KEY}`;
             try {
                 const response = await fetch(url);
                 const data = await response.json();
-                
                 if (data.items && data.items.length > 0) {
                     const tags = data.items[0].snippet.tags;
                     if (tags) {
                         tags.forEach(tag => {
-                            let cleanTag = tag.toLowerCase();
-                            userProfile[cleanTag] = (userProfile[cleanTag] || 0) + weight;
+                            let clean = tag.toLowerCase();
+                            userProfile[clean] = (userProfile[clean] || 0) + weight;
                         });
                         totalWeightedWatchTime += weight;
                     }
                 }
-            } catch (error) {
-                console.error(error);
-            }
+            } catch (e) { console.error("Tag fetch error", e); }
         }
 
-        function processVideoWatchTime() {
+        function processWatchTime() {
             if (!videos[currentIndex]) return;
-            const durationWatched = (Date.now() - videoStartTime) / 1000;
-            
-            if (durationWatched > 2) { 
-                const weight = Math.min(Math.floor(durationWatched), 60);
-                const videoId = videos[currentIndex].id.videoId;
-                extractTagsAndUpdateProfile(videoId, weight);
+            const duration = (Date.now() - videoStartTime) / 1000;
+            if (duration > 2) { 
+                const weight = Math.min(Math.floor(duration), 60);
+                updateProfileFromTags(videos[currentIndex].id.videoId, weight);
             }
         }
 
         function manualSearch() {
-            processVideoWatchTime();
+            processWatchTime();
             fetchVideos(false);
         }
 
         function loadVideo() {
             if (videos.length > 0 && videos[currentIndex]) {
                 const videoId = videos[currentIndex].id.videoId;
-                document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1&hl=en&cc_lang_pref=en`;
+                document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1&hl=en&cc_lang_pref=en&rel=0`;
                 videoStartTime = Date.now();
             }
         }
 
         function nextVideo() {
             if (currentIndex < videos.length - 1) {
-                processVideoWatchTime();
+                processWatchTime();
                 currentIndex++;
                 loadVideo();
                 if (currentIndex >= videos.length - 5 && document.getElementById('searchInput').value.trim() === "") {
@@ -169,20 +245,22 @@
 
         function prevVideo() {
             if (currentIndex > 0) {
-                processVideoWatchTime();
+                processWatchTime();
                 currentIndex--;
                 loadVideo();
             }
         }
 
-        window.addEventListener('wheel', (event) => {
+        window.addEventListener('wheel', (e) => {
             if (isScrolling) return;
             isScrolling = true;
-            if (event.deltaY > 0) nextVideo();
-            else if (event.deltaY < 0) prevVideo();
+            if (e.deltaY > 0) nextVideo();
+            else if (e.deltaY < 0) prevVideo();
             setTimeout(() => { isScrolling = false; }, 800);
         });
 
+        // Initialize
+        initSidebar();
         fetchVideos(false);
     </script>
 </body>

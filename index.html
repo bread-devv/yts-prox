@@ -44,8 +44,8 @@
 <body>
 
     <div id="search-bar">
-        <input type="text" id="searchInput" placeholder="Search for Shorts..." onkeydown="if(event.key === 'Enter') searchShorts()">
-        <button onclick="searchShorts()">Search</button>
+        <input type="text" id="searchInput" placeholder="Search for Shorts..." onkeydown="if(event.key === 'Enter') manualSearch()">
+        <button onclick="manualSearch()">Search</button>
     </div>
 
     <div id="video-container">
@@ -62,18 +62,27 @@
         let videos =[];
         let currentIndex = 0;
         let isScrolling = false;
+        let videoStartTime = 0;
+        let userProfile = {};
+        
+        const baseTopics =['trending', 'funny', 'gaming', 'pets', 'cooking', 'memes', 'satisfying', 'sports', 'music', 'science', 'tech', 'art', 'travel', 'fitness', 'DIY'];
+        const stopWords =['the','in','and','of','a','to','is','for','on','with','at','by','this','that','it','are','from','as','be','was','or','an','will','my','shorts','#shorts','video','new','how','what','why','part','pt','ep'];
 
-        const startingTopics =['trending', 'funny', 'gaming', 'pets', 'cooking', 'memes', 'satisfying', 'sports', 'music', 'science', 'tech', 'art'];
-
-        async function searchShorts(isInitialLoad = false) {
-            let query = document.getElementById('searchInput').value;
+        async function fetchVideos(isAutoFetch = false) {
+            let query = document.getElementById('searchInput').value.trim();
+            let internalQuery = query;
             
-            if (isInitialLoad || query.trim() === "") {
-                query = startingTopics[Math.floor(Math.random() * startingTopics.length)];
-                document.getElementById('searchInput').value = query;
+            if (query === "") {
+                if (Object.keys(userProfile).length > 0 && Math.random() > 0.3) {
+                    const sortedWords = Object.keys(userProfile).sort((a, b) => userProfile[b] - userProfile[a]);
+                    const topWords = sortedWords.slice(0, 8);
+                    internalQuery = topWords[Math.floor(Math.random() * topWords.length)];
+                } else {
+                    internalQuery = baseTopics[Math.floor(Math.random() * baseTopics.length)];
+                }
             }
 
-            const searchQuery = `${query} #shorts`;
+            const searchQuery = `${internalQuery} #shorts`;
             const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(searchQuery)}&type=video&videoDuration=short&key=${API_KEY}`;
 
             try {
@@ -81,10 +90,15 @@
                 const data = await response.json();
                 
                 if (data.items && data.items.length > 0) {
-                    videos = data.items.sort(() => Math.random() - 0.5);
-                    currentIndex = 0;
-                    loadVideo();
-                } else {
+                    let newVideos = data.items.sort(() => Math.random() - 0.5);
+                    if (isAutoFetch) {
+                        videos = videos.concat(newVideos);
+                    } else {
+                        videos = newVideos;
+                        currentIndex = 0;
+                        loadVideo();
+                    }
+                } else if (!isAutoFetch) {
                     alert("No shorts found or API limit reached.");
                 }
             } catch (error) {
@@ -92,22 +106,51 @@
             }
         }
 
+        function manualSearch() {
+            updateProfile();
+            fetchVideos(false);
+        }
+
+        function updateProfile() {
+            if (!videos[currentIndex]) return;
+            const duration = Date.now() - videoStartTime;
+            
+            if (duration > 4000) { 
+                const title = videos[currentIndex].snippet.title.toLowerCase();
+                const words = title.replace(/[^a-z0-9\s]/g, '').split(/\s+/);
+                const weight = Math.min(Math.floor(duration / 1000), 30); 
+                
+                words.forEach(word => {
+                    if (word.length > 2 && !stopWords.includes(word)) {
+                        userProfile[word] = (userProfile[word] || 0) + weight;
+                    }
+                });
+            }
+        }
+
         function loadVideo() {
             if (videos.length > 0 && videos[currentIndex]) {
                 const videoId = videos[currentIndex].id.videoId;
                 document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                videoStartTime = Date.now();
             }
         }
 
         function nextVideo() {
             if (currentIndex < videos.length - 1) {
+                updateProfile();
                 currentIndex++;
                 loadVideo();
+                
+                if (currentIndex >= videos.length - 4 && document.getElementById('searchInput').value.trim() === "") {
+                    fetchVideos(true);
+                }
             }
         }
 
         function prevVideo() {
             if (currentIndex > 0) {
+                updateProfile();
                 currentIndex--;
                 loadVideo();
             }
@@ -126,7 +169,7 @@
             setTimeout(() => { isScrolling = false; }, 800);
         });
 
-        searchShorts(true);
+        fetchVideos(false);
     </script>
 </body>
 </html>

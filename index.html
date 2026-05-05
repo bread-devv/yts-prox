@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shorts Proxy</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            background-color: #0f0f0f; color: white;
+            font-family: Arial, sans-serif;
+            display: flex; flex-direction: column; align-items: center;
+            overflow: hidden; /* Prevents whole-page scrolling */
+        }
+        #search-bar {
+            padding: 15px; width: 100%; background: #222;
+            display: flex; justify-content: center; gap: 10px; z-index: 10;
+        }
+        input {
+            padding: 10px; width: 300px; border-radius: 20px;
+            border: 1px solid #444; background: #111; color: white; outline: none;
+        }
+        button {
+            padding: 10px 20px; border-radius: 20px; border: none;
+            background: #ff0000; color: white; cursor: pointer; font-weight: bold;
+        }
+        button:hover { background: #cc0000; }
+        
+        #video-container {
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; width: 100%;
+        }
+        iframe {
+            width: 100%; max-width: 400px; height: 75vh;
+            border: none; border-radius: 15px; background: #000;
+        }
+        .controls {
+            margin-top: 15px; display: flex; gap: 20px;
+        }
+        .controls button { background: #333; }
+        .controls button:hover { background: #555; }
+    </style>
+</head>
+<body>
+
+    <div id="search-bar">
+        <input type="text" id="searchInput" value="funny" placeholder="Search for Shorts..." onkeydown="if(event.key === 'Enter') searchShorts()">
+        <button onclick="searchShorts()">Search</button>
+    </div>
+
+    <div id="video-container">
+        <iframe id="videoPlayer" allow="autoplay; fullscreen" src=""></iframe>
+        <div class="controls">
+            <button onclick="prevVideo()">↑ Previous</button>
+            <button onclick="nextVideo()">↓ Next</button>
+        </div>
+    </div>
+
+    <script>
+        // PUT YOUR API KEY HERE
+        const API_KEY = 'AIzaSyBLOCb3TzQhEtRdWYxeveNCCbTcXKw0eUs'; 
+        
+        let videos =[];
+        let currentIndex = 0;
+        let isScrolling = false;
+
+        async function searchShorts() {
+            const query = document.getElementById('searchInput').value || 'funny';
+            const searchQuery = `${query} #shorts`;
+            
+            // Construct the API URL directly
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(searchQuery)}&type=video&videoDuration=short&key=${API_KEY}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.items && data.items.length > 0) {
+                    videos = data.items;
+                    currentIndex = 0;
+                    loadVideo();
+                } else {
+                    alert("No shorts found or API limit reached.");
+                }
+            } catch (error) {
+                console.error("Error fetching videos:", error);
+            }
+        }
+
+        function loadVideo() {
+            if (videos.length > 0 && videos[currentIndex]) {
+                const videoId = videos[currentIndex].id.videoId;
+                document.getElementById('videoPlayer').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+            }
+        }
+
+        function nextVideo() {
+            if (currentIndex < videos.length - 1) {
+                currentIndex++;
+                loadVideo();
+            }
+        }
+
+        function prevVideo() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                loadVideo();
+            }
+        }
+
+        // Mouse wheel scrolling
+        window.addEventListener('wheel', (event) => {
+            if (isScrolling) return;
+            
+            isScrolling = true;
+            if (event.deltaY > 0) {
+                nextVideo();
+            } else if (event.deltaY < 0) {
+                prevVideo();
+            }
+
+            setTimeout(() => { isScrolling = false; }, 800);
+        });
+
+        // Initial load
+        searchShorts();
+    </script>
+</body>
+</html>
